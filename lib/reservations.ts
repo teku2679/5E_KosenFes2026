@@ -15,14 +15,7 @@ import {
   onSnapshot,
 } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
-import { Reservation } from '@/types';
-
-// 展示・営業時間設定の型定義
-export interface OperationalSettings {
-  startHour: number;
-  endHour: number;
-  maintenanceSlots: string[];
-}
+import { Reservation, OperationalSettings } from '@/types';
 
 export const DEFAULT_SETTINGS: OperationalSettings = {
   startHour: 10,
@@ -32,7 +25,7 @@ export const DEFAULT_SETTINGS: OperationalSettings = {
 
 export const AVAILABLE_DATES = ["2026-11-07", "2026-11-08"]; // 開催日
 
-// --- 1. 設定情報の取得・更新 ---
+// --- 1. 展示・営業時間設定の取得・更新 ---
 
 // Firestoreから営業時間・メンテナンス設定を取得
 export async function getOperationalSettings(): Promise<OperationalSettings> {
@@ -68,7 +61,7 @@ export function generateTimeSlots(startHour: number, endHour: number): string[] 
   return slots;
 }
 
-// 6桁コード生成
+// 6桁のチェックインコード生成
 function generateCheckinCode(): string {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
@@ -90,7 +83,7 @@ export async function getBookedSlotsForDate(date: string): Promise<string[]> {
   return snapshot.docs.map((doc) => doc.data().reservation_time as string);
 }
 
-// ユーザーのアクティブな予約を取得
+// ユーザーのアクティブな予約を取得（1件のみ許可）
 export async function getActiveReservation(uid: string): Promise<Reservation | null> {
   const q = query(
     collection(db, 'reservations'),
@@ -146,26 +139,25 @@ export async function createReservation(
   return newCheckinCode;
 }
 
-// 予約キャンセル
+// 予約のキャンセル
 export async function cancelReservation(reservationId: string): Promise<void> {
   await deleteDoc(doc(db, 'reservations', reservationId));
 }
 
 // --- 2. 管理者向け機能 ---
 
-// 全予約の取得（メモリソートにより複合インデックスエラーを回避）
+// 全予約の取得（日時順）
 export async function getAllReservations(): Promise<Reservation[]> {
-  const snapshot = await getDocs(collection(db, 'reservations'));
-  const list = snapshot.docs.map((docSnap) => ({
+  const q = query(
+    collection(db, 'reservations'),
+    orderBy('reservation_date', 'asc'),
+    orderBy('reservation_time', 'asc')
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((docSnap) => ({
     id: docSnap.id,
     ...docSnap.data(),
   })) as Reservation[];
-
-  return list.sort((a, b) => {
-    const dateDiff = a.reservation_date.localeCompare(b.reservation_date);
-    if (dateDiff !== 0) return dateDiff;
-    return a.reservation_time.localeCompare(b.reservation_time);
-  });
 }
 
 // チェックイン処理 (コード照合)
@@ -208,44 +200,58 @@ export async function recordClearResult(
   });
 }
 
-// --- 3. ランキング機能 ---
+// --- 3. ランキング用リアルタイム取得・フォーマット機能 ---
 
-// 秒数を mm:ss.SS 形式に変換
-export function formatClearTime(totalSeconds?: number): string {
-  if (totalSeconds === undefined || totalSeconds === null || isNaN(totalSeconds) || totalSeconds < 0) {
-    return '--:--.--';
-  }
-  const mins = Math.floor(totalSeconds / 60);
-  const secs = Math.floor(totalSeconds % 60);
-  const millis = Math.round((totalSeconds - Math.floor(totalSeconds)) * 100);
-
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(mins)}:${pad(secs)}.${pad(millis)}`;
+// 秒数を mm:ss.SS 形式にフォーマット
+export function formatClearTime(seconds?: number): string {
+  if (seconds === undefined || seconds === null || isNaN(seconds)) return '--:--.--';
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  const ms = Math.floor((seconds % 1) * 100);
+  const mStr = String(m).padStart(2, '0');
+  const sStr = String(s).padStart(2, '0');
+  const msStr = String(ms).padStart(2, '0');
+  return `${mStr}:${sStr}.${msStr}`;
 }
 
-// 難易度別ランキングのリアルタイム購読 (オンサイト表示用)
+// 難易度別のリアルタイムランキング購読 (オーバーロード対応)
 export function subscribeRankingByDifficulty(
   difficultyLevel: number,
-  limitCount: number = 10,
-  callback: (rankings: Reservation[]) => void
-) {
+  limitCountOrCallback: number | ((data: Reservation[]) => void),
+  callbackArg?: (data: Reservation[]) => void
+): () => void {
+  let limitCount = 10;
+  let callback: (data: Reservation[]) => void;
+
+  if (typeof limitCountOrCallback === 'function') {
+    callback = limitCountOrCallback;
+  } else {
+    limitCount = limitCountOrCallback;
+    callback = callbackArg || (() => {});
+  }
+
   const q = query(
     collection(db, 'reservations'),
     where('status', '==', 'cleared'),
     where('difficulty_level', '==', difficultyLevel)
   );
 
-  return onSnapshot(q, (snapshot) => {
-    const list = snapshot.docs.map((docSnap) => ({
-      id: docSnap.id,
-      ...docSnap.data(),
-    })) as Reservation[];
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const list = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data(),
+      })) as Reservation[];
 
-    // メモリ内でクリアタイムの昇順ソートを実施 (インデックスエラー回避)
-    list.sort((a, b) => (a.clear_time ?? Infinity) - (b.clear_time ?? Infinity));
+      // クリアタイム昇順（速い順）でソート
+      list.sort((a, b) => (a.clear_time ?? Infinity) - (b.clear_time ?? Infinity));
 
-    callback(list.slice(0, limitCount));
-  }, (err) => {
-    console.error(`難易度${difficultyLevel}のランキング読み込みエラー:`, err);
-  });
+      callback(list.slice(0, limitCount));
+    },
+    (err) => {
+      console.error('Ranking subscription error:', err);
+      callback([]);
+    }
+  );
 }

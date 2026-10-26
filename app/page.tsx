@@ -6,21 +6,23 @@ import { subscribeRankingByDifficulty, formatClearTime } from '@/lib/reservation
 import { Reservation } from '@/types';
 
 export default function HomePage() {
-  const [difficulty, setDifficulty] = useState<number>(1);
-  const [topRankings, setTopRankings] = useState<Reservation[]>([]);
+  const [selectedDifficulty, setSelectedDifficulty] = useState<number>(1);
+  const [top3List, setTop3List] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
   // 難易度別TOP3のリアルタイム購読
   useEffect(() => {
     setLoading(true);
-    const unsubscribe = subscribeRankingByDifficulty(difficulty, 3, (data: Reservation[]) => {
-      // 上位3件のみ抽出
-      setTopRankings(data.slice(0, 3));
-      setLoading(false);
-    });
-
+    const unsubscribe = subscribeRankingByDifficulty(
+      selectedDifficulty,
+      3,
+      (data: Reservation[]) => {
+        setTop3List(data.slice(0, 3));
+        setLoading(false);
+      }
+    );
     return () => unsubscribe();
-  }, [difficulty]);
+  }, [selectedDifficulty]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-black text-white">
@@ -104,9 +106,9 @@ export default function HomePage() {
               {[1, 2, 3].map((lvl) => (
                 <button
                   key={lvl}
-                  onClick={() => setDifficulty(lvl)}
+                  onClick={() => setSelectedDifficulty(lvl)}
                   className={`px-3 py-1.5 text-xs font-bold rounded-lg transition ${
-                    difficulty === lvl
+                    selectedDifficulty === lvl
                       ? 'bg-red-600 text-white shadow'
                       : 'text-gray-400 hover:text-white'
                   }`}
@@ -120,13 +122,13 @@ export default function HomePage() {
           {/* ランキング表示コンテンツ */}
           {loading ? (
             <div className="py-10 text-center text-gray-400 text-sm">読み込み中...</div>
-          ) : topRankings.length === 0 ? (
+          ) : top3List.length === 0 ? (
             <div className="py-10 text-center text-gray-400 text-sm bg-gray-900/50 rounded-xl border border-gray-800">
-              まだ Lv.{difficulty} のクリア記録がありません。あなたが最初の達成者になろう！
+              まだ Lv.{selectedDifficulty} のクリア記録がありません。あなたが最初の達成者になろう！
             </div>
           ) : (
             <div className="space-y-3">
-              {topRankings.map((item, index) => {
+              {top3List.map((item, index) => {
                 const medals = ['🥇 1st', '🥈 2nd', '🥉 3rd'];
                 const badgeColors = [
                   'bg-yellow-500/20 text-yellow-300 border-yellow-500/50',
