@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   AVAILABLE_DATES,
   generateTimeSlots,
@@ -25,14 +26,10 @@ export default function ReservePage() {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [message, setMessage] = useState<string>('');
 
-  const allSlots = generateTimeSlots(settings.startHour, settings.endHour);
-
-  // 初期データ読み込み
   const loadData = async () => {
     try {
       setLoading(true);
       setMessage('');
-
       const currentSettings = await getOperationalSettings();
       setSettings(currentSettings);
 
@@ -56,7 +53,8 @@ export default function ReservePage() {
     loadData();
   }, [selectedDate]);
 
-  // 予約処理
+  const allSlots = generateTimeSlots(settings.startHour, settings.endHour);
+
   const handleReserve = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTime || !name.trim()) return;
@@ -73,7 +71,10 @@ export default function ReservePage() {
       if (err.message === 'RESERVATION_LIMIT_EXCEEDED') {
         alert('既に有効な予約があります。複数の予約はできません。');
       } else if (err.message === 'BOOKING_CONFLICT') {
-        alert('申し訳ありません。この枠は直前に他のユーザーに予約されました。');
+        alert('この枠は直前に他のユーザーに予約されました。');
+        await loadData();
+      } else if (err.message === 'MAINTENANCE_SLOT') {
+        alert('選択された枠はメンテナンス時間です。');
         await loadData();
       } else {
         alert('予約中にエラーが発生しました。');
@@ -84,7 +85,6 @@ export default function ReservePage() {
     }
   };
 
-  // キャンセル処理
   const handleCancel = async (id: string) => {
     if (!confirm('本当に予約をキャンセルしますか？')) return;
     try {
@@ -101,140 +101,180 @@ export default function ReservePage() {
   };
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center font-bold text-gray-500">読み込み中...</div>;
+    return <div className="min-h-screen bg-gray-950 text-gray-300 flex items-center justify-center font-mono">読み込み中...</div>;
   }
 
   return (
-    <div className="page-container-narrow">
-      <h1 className="text-2xl font-bold text-center mb-6 text-gray-800">レーザー脱出ゲーム 予約システム</h1>
+    <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col">
+      {/* 共通ナビゲーションヘッダー */}
+      <header className="bg-gray-900/80 backdrop-blur-md border-b border-gray-800 sticky top-0 z-40">
+        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2 font-black text-lg sm:text-xl tracking-wider bg-gradient-to-r from-red-500 via-orange-400 to-yellow-300 bg-clip-text text-transparent">
+            <span>⚡</span>
+            <span>レーザー脱出</span>
+          </Link>
+          <nav className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm font-semibold">
+            <Link href="/" className="px-2.5 py-1.5 rounded-lg text-gray-300 hover:text-white hover:bg-gray-800 transition">
+              トップ
+            </Link>
+            <Link href="/reserve" className="px-2.5 py-1.5 rounded-lg text-gray-300 hover:text-white hover:bg-gray-800 transition">
+              🎟️ 予約
+            </Link>
+            <Link href="/ranking" className="px-2.5 py-1.5 rounded-lg text-gray-300 hover:text-white hover:bg-gray-800 transition">
+              🏆 順位
+            </Link>
+            <Link href="/admin" className="px-2.5 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition border border-gray-800">
+              ⚙️ 管理
+            </Link>
+          </nav>
+        </div>
+      </header>
 
-      {/* アクティブな予約カード */}
-      {activeReservation ? (
-        <div className="card text-center">
-          <h2 className="text-xl font-semibold mb-4 text-blue-600">現在のアクティブな予約</h2>
-          <div className="card-inner text-left max-w-md mx-auto space-y-3">
-            <p><b>代表者（チーム名）:</b> {activeReservation.name}</p>
-            <p><b>予約日時:</b> {activeReservation.reservation_date} {activeReservation.reservation_time}</p>
-            <p>
-              <b>ステータス:</b>{' '}
-              <span className={activeReservation.status === 'reserved' ? 'badge-reserved' : 'badge-playing'}>
-                {activeReservation.status === 'reserved' ? '来場前' : 'プレイ中'}
-              </span>
-            </p>
-            <div className="card-highlight">
-              <p className="text-sm font-semibold text-yellow-800">チェックインコード:</p>
-              <p className="text-3xl font-mono font-extrabold text-center tracking-widest text-gray-900 my-1">
-                {activeReservation.checkin_code}
+      <main className="flex-1 max-w-2xl w-full mx-auto px-4 py-8 space-y-8">
+        <div className="text-center space-y-2">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white">🎟️ 挑戦予約システム</h1>
+          <p className="text-xs sm:text-sm text-gray-400">希望の時間枠を選択して事前予約してください（1人1枠まで）</p>
+        </div>
+
+        {activeReservation ? (
+          /* アクティブな予約カード */
+          <div className="bg-gray-900 border border-blue-500/40 rounded-2xl p-6 shadow-2xl space-y-6 text-center">
+            <h2 className="text-lg font-bold text-blue-400">現在のアクティブな予約</h2>
+            
+            <div className="space-y-3 text-left max-w-md mx-auto bg-gray-950 p-4 rounded-xl border border-gray-800 text-sm">
+              <p className="flex justify-between">
+                <span className="text-gray-400">代表者（チーム名）:</span>
+                <span className="font-bold text-white">{activeReservation.name}</span>
               </p>
-              <p className="text-xs text-yellow-700 text-center">※受付でこのコードをご提示ください。</p>
+              <p className="flex justify-between">
+                <span className="text-gray-400">予約日時:</span>
+                <span className="font-mono font-bold text-white">{activeReservation.reservation_date} {activeReservation.reservation_time}</span>
+              </p>
+              <p className="flex justify-between">
+                <span className="text-gray-400">ステータス:</span>
+                <span className="font-bold text-emerald-400">
+                  {activeReservation.status === 'reserved' ? '来場前' : 'プレイ中'}
+                </span>
+              </p>
+
+              {/* チェックインコード案内 */}
+              <div className="bg-amber-950/60 border border-amber-500/50 p-4 rounded-xl mt-4 text-center space-y-1">
+                <p className="text-xs text-amber-300 font-semibold">受付用チェックインコード</p>
+                <p className="text-3xl font-mono font-black tracking-widest text-amber-400 my-1">
+                  {activeReservation.checkin_code}
+                </p>
+                <p className="text-[11px] text-amber-200/80">※受付スタッフにこのコードを提示してください。</p>
+              </div>
             </div>
+
+            {activeReservation.status === 'reserved' && (
+              <button
+                onClick={() => activeReservation.id && handleCancel(activeReservation.id)}
+                className="px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-xs transition"
+              >
+                予約をキャンセルする
+              </button>
+            )}
           </div>
-          {activeReservation.status === 'reserved' && (
-            <button
-              onClick={() => activeReservation.id && handleCancel(activeReservation.id)}
-              className="btn-danger mt-6"
-            >
-              予約をキャンセルする
-            </button>
-          )}
-        </div>
-      ) : (
-        /* 新規予約フォーム */
-        <div className="space-y-6">
-          {/* 1. 日付選択 */}
-          <div>
-            <label className="form-label">① 開催日を選択してください</label>
-            <div className="flex gap-3">
-              {AVAILABLE_DATES.map((d) => (
-                <button
-                  key={d}
-                  onClick={() => {
-                    setSelectedDate(d);
-                    setSelectedTime(null);
-                  }}
-                  className={`flex-1 py-3 rounded-lg font-bold transition border ${
-                    selectedDate === d
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  {d}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 2. 時間スロット選択 */}
-          <div>
-            <label className="form-label">② 予約希望時間を選択してください（5分刻み）</label>
-            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-60 overflow-y-auto p-3 bg-gray-50 rounded-xl border border-gray-200">
-              {allSlots.map((time) => {
-                const isMaintenance = settings.maintenanceSlots.includes(time);
-                const isBooked = bookedSlots.includes(time);
-                const isSelected = selectedTime === time;
-
-                let styleClass = 'slot-btn-available';
-                let label = time;
-
-                if (isMaintenance) {
-                  styleClass = 'slot-btn-maintenance';
-                  label = '休止';
-                } else if (isBooked) {
-                  styleClass = 'slot-btn-booked';
-                  label = '満席';
-                } else if (isSelected) {
-                  styleClass = 'slot-btn-selected';
-                }
-
-                return (
+        ) : (
+          /* 新規予約フォーム */
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-2xl space-y-6">
+            {/* 1. 日付選択 */}
+            <div className="space-y-2">
+              <label className="block text-sm font-bold text-gray-200">① 開催日を選択</label>
+              <div className="grid grid-cols-2 gap-3">
+                {AVAILABLE_DATES.map((d) => (
                   <button
-                    key={time}
-                    disabled={isMaintenance || isBooked}
-                    onClick={() => setSelectedTime(time)}
-                    className={`slot-btn ${styleClass}`}
+                    key={d}
+                    onClick={() => {
+                      setSelectedDate(d);
+                      setSelectedTime(null);
+                    }}
+                    className={`py-3 rounded-xl font-bold text-sm transition border ${
+                      selectedDate === d
+                        ? 'bg-red-600 text-white border-red-500 shadow-md shadow-red-950'
+                        : 'bg-gray-950 text-gray-300 border-gray-800 hover:border-gray-700 hover:text-white'
+                    }`}
                   >
-                    <span>{time}</span>
-                    <span className="text-[10px] opacity-75">{label === time ? '〇' : label}</span>
+                    {d}
                   </button>
-                );
-              })}
+                ))}
+              </div>
             </div>
+
+            {/* 2. 時間枠選択 */}
+            <div className="space-y-2">
+              <label className="block text-sm font-bold text-gray-200">② 希望時間枠を選択（5分刻み）</label>
+              <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-64 overflow-y-auto p-3 bg-gray-950 rounded-xl border border-gray-800">
+                {allSlots.map((time) => {
+                  const isMaintenance = settings.maintenanceSlots.includes(time);
+                  const isBooked = bookedSlots.includes(time);
+                  const isSelected = selectedTime === time;
+
+                  let style = 'bg-gray-900 text-gray-300 border-gray-800 hover:border-red-500 hover:text-white';
+                  let statusText = '〇';
+
+                  if (isMaintenance) {
+                    style = 'bg-gray-950 text-gray-600 border-transparent cursor-not-allowed';
+                    statusText = '休止';
+                  } else if (isBooked) {
+                    style = 'bg-red-950/40 text-red-500/60 border-transparent cursor-not-allowed';
+                    statusText = '満席';
+                  } else if (isSelected) {
+                    style = 'bg-red-600 text-white border-red-500 font-bold shadow';
+                  }
+
+                  return (
+                    <button
+                      key={time}
+                      disabled={isMaintenance || isBooked}
+                      onClick={() => setSelectedTime(time)}
+                      className={`py-2 px-1 text-xs rounded-lg border transition flex flex-col items-center justify-center font-mono ${style}`}
+                    >
+                      <span>{time}</span>
+                      <span className="text-[10px] opacity-75">{statusText}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 3. チーム名フォーム */}
+            <form onSubmit={handleReserve} className="space-y-4 pt-2 border-t border-gray-800">
+              <div className="space-y-1">
+                <label className="block text-sm font-bold text-gray-200">③ 代表者名（またはチーム名）</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="例: チーム高専 / 高専太郎"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full p-3 bg-gray-950 border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                />
+              </div>
+
+              <div className="text-xs text-gray-400 bg-gray-950 p-3 rounded-xl border border-gray-800 flex justify-between items-center">
+                <span>選択中:</span>
+                <b className="text-red-400 text-sm font-mono">{selectedDate} {selectedTime || '未選択'}</b>
+              </div>
+
+              <button
+                type="submit"
+                disabled={!selectedTime || !name.trim() || submitting}
+                className="w-full py-3.5 bg-gradient-to-r from-red-600 to-orange-500 hover:from-red-500 hover:to-orange-400 disabled:from-gray-800 disabled:to-gray-800 disabled:text-gray-600 text-white font-bold rounded-xl shadow-lg transition duration-200 text-base"
+              >
+                {submitting ? '処理中...' : '予約を確定する'}
+              </button>
+            </form>
+
+            {message && (
+              <p className="p-4 bg-emerald-950/60 border border-emerald-500/50 rounded-xl text-center font-bold text-emerald-300 text-sm">
+                {message}
+              </p>
+            )}
           </div>
-
-          {/* 3. 代表者名入力 */}
-          <form onSubmit={handleReserve} className="card space-y-4">
-            <div>
-              <label className="form-label">③ 代表者名（またはチーム名）</label>
-              <input
-                type="text"
-                required
-                placeholder="例: チーム高専 / 高専太郎"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="input-text"
-              />
-            </div>
-
-            <div className="text-sm mb-4 text-red-600">
-              <b className="text-red-600">個人情報は入力しないでください</b>
-            </div>
-
-            <div className="text-sm text-gray-600">
-              選択日時: <b className="text-blue-600">{selectedDate} {selectedTime || '未選択'}</b>
-            </div>
-
-            <button
-              type="submit"
-              disabled={!selectedTime || !name.trim() || submitting}
-              className="btn-primary"
-            >
-              {submitting ? '処理中...' : '予約を確定する'}
-            </button>
-          </form>
-
-          {message && <p className="mt-4 text-center font-semibold text-blue-600">{message}</p>}
-        </div>
-      )}
+        )}
+      </main>
     </div>
   );
 }
