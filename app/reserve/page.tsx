@@ -4,14 +4,15 @@ import { useState, useEffect } from 'react';
 import {
   AVAILABLE_DATES,
   generateTimeSlots,
-  MAINTENANCE_SLOTS,
   ensureAnonymousAuth,
   getActiveReservation,
   getBookedSlotsForDate,
   createReservation,
   cancelReservation,
+  getOperationalSettings,
+  DEFAULT_SETTINGS,
 } from '@/lib/reservations';
-import { Reservation } from '@/types';
+import { Reservation, OperationalSettings } from '@/types';
 
 export default function ReservePage() {
   const [selectedDate, setSelectedDate] = useState<string>(AVAILABLE_DATES[0] ?? '');
@@ -19,17 +20,21 @@ export default function ReservePage() {
   const [name, setName] = useState<string>('');
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
   const [activeReservation, setActiveReservation] = useState<Reservation | null>(null);
+  const [settings, setSettings] = useState<OperationalSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState<boolean>(true);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [message, setMessage] = useState<string>('');
-
-  const allSlots = generateTimeSlots();
 
   // 初期化とデータの読み込み
   const loadData = async () => {
     try {
       setLoading(true);
       setMessage('');
+
+      // 動的設定を取得
+      const currentSettings = await getOperationalSettings();
+      setSettings(currentSettings);
+
       const uid = await ensureAnonymousAuth();
       const active = await getActiveReservation(uid);
       setActiveReservation(active);
@@ -50,6 +55,9 @@ export default function ReservePage() {
     loadData();
   }, [selectedDate]);
 
+  // 動的設定に基づいたタイムスロット生成
+  const allSlots = generateTimeSlots(settings.startHour, settings.endHour);
+
   // 予約処理
   const handleReserve = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +77,9 @@ export default function ReservePage() {
       } else if (err.message === 'BOOKING_CONFLICT') {
         alert('申し訳ありません。この枠は直前に他のユーザーに予約されました。');
         await loadData();
+      } else if (err.message === 'MAINTENANCE_SLOT') {
+        alert('選択された枠はメンテナンス時間です。');
+        await loadData();
       } else {
         alert('予約中にエラーが発生しました。');
       }
@@ -84,7 +95,7 @@ export default function ReservePage() {
     try {
       setLoading(true);
       await cancelReservation(id);
-      setMessage('');
+      setMessage(''); // メッセージをクリア
       alert('予約をキャンセルしました。');
       await loadData();
     } catch (err) {
@@ -158,7 +169,7 @@ export default function ReservePage() {
             <label className="block font-semibold mb-2">② 予約希望時間を選択してください（5分刻み）</label>
             <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-60 overflow-y-auto p-2 bg-gray-50 rounded-lg border">
               {allSlots.map((time) => {
-                const isMaintenance = MAINTENANCE_SLOTS.includes(time);
+                const isMaintenance = settings.maintenanceSlots.includes(time);
                 const isBooked = bookedSlots.includes(time);
                 const isSelected = selectedTime === time;
 
@@ -202,10 +213,6 @@ export default function ReservePage() {
                 onChange={(e) => setName(e.target.value)}
                 className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-            </div>
-
-            <div className="text-sm mb-4 text-red-600">
-              <b className="text-red-600">個人情報は入力しないでください</b>
             </div>
 
             <div className="text-sm mb-4 text-gray-600">

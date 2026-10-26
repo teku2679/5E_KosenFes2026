@@ -4,27 +4,54 @@ import {
   query,
   where,
   getDocs,
+  getDoc,
   doc,
+  setDoc,
+  updateDoc,
   deleteDoc,
   runTransaction,
   serverTimestamp,
+  orderBy,
 } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
-import { Reservation } from '@/types';
+import { Reservation, OperationalSettings } from '@/types';
 
-// 営業時間・メンテナンス設定
-export const OPERATIONAL_START_HOUR = 10;
-export const OPERATIONAL_END_HOUR = 17;
-export const SLOT_INTERVAL_MINUTES = 5;
-export const MAINTENANCE_SLOTS = ["10:55", "11:55", "12:55", "13:55", "14:55", "15:55", "16:55"];
-export const AVAILABLE_DATES = ["2026-11-07", "2026-11-08"]; // 今年の開催日
+export const DEFAULT_SETTINGS: OperationalSettings = {
+  startHour: 10,
+  endHour: 17,
+  maintenanceSlots: ["10:55", "11:55", "12:55", "13:55", "14:55", "15:55", "16:55"],
+};
 
-// 5分刻みの全時間スロット生成 (メンテナンス含む)
-export function generateTimeSlots(): string[] {
+export const AVAILABLE_DATES = ["2026-11-07", "2026-11-08"]; // 開催日
+
+// --- 1. 展示・営業時間設定の取得・更新 ---
+
+// Firestoreから営業時間・メンテナンス設定を取得
+export async function getOperationalSettings(): Promise<OperationalSettings> {
+  try {
+    const docRef = doc(db, 'settings', 'operational');
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      return snap.data() as OperationalSettings;
+    }
+  } catch (err) {
+    console.error('設定データの取得失敗:', err);
+  }
+  return DEFAULT_SETTINGS;
+}
+
+// 営業時間・メンテナンス設定の保存
+export async function updateOperationalSettings(newSettings: OperationalSettings): Promise<void> {
+  const docRef = doc(db, 'settings', 'operational');
+  await setDoc(docRef, newSettings);
+}
+
+// 指定した開始・終了時間から5分刻みの時間スロットを生成
+export function generateTimeSlots(startHour: number, endHour: number): string[] {
   const slots: string[] = [];
-  for (let h = OPERATIONAL_START_HOUR; h <= OPERATIONAL_END_HOUR; h++) {
-    for (let m = 0; m < 60; m += SLOT_INTERVAL_MINUTES) {
-      if (h === OPERATIONAL_END_HOUR && m > 0) break;
+  for (let h = startHour; h <= endHour; h++) {
+    for (let m = 0; m < 60; m += 5) {
+      if (h === endHour && m > 0) break;
       const hourStr = String(h).padStart(2, '0');
       const minuteStr = String(m).padStart(2, '0');
       slots.push(`${hourStr}:${minuteStr}`);
@@ -45,7 +72,7 @@ export async function ensureAnonymousAuth(): Promise<string> {
   return credential.user.uid;
 }
 
-// 指定日の予約済み枠一覧を取得
+// 予約済み時間枠を取得
 export async function getBookedSlotsForDate(date: string): Promise<string[]> {
   const q = query(
     collection(db, 'reservations'),
@@ -55,7 +82,7 @@ export async function getBookedSlotsForDate(date: string): Promise<string[]> {
   return snapshot.docs.map((doc) => doc.data().reservation_time as string);
 }
 
-// ユーザーのアクティブな予約（1件のみ許可）を取得
+// ユーザーのアクティブな予約を取得（1件のみ許可）
 export async function getActiveReservation(uid: string): Promise<Reservation | null> {
   const q = query(
     collection(db, 'reservations'),
@@ -68,26 +95,22 @@ export async function getActiveReservation(uid: string): Promise<Reservation | n
   return { id: docSnap.id, ...docSnap.data() } as Reservation;
 }
 
-// 新規予約の追加（トランザクションによる排他制御）
+// 新規予約の作成（トランザクション保護）
 export async function createReservation(
   date: string,
   time: string,
   name: string
 ): Promise<string> {
   const uid = await ensureAnonymousAuth();
+  const settings = await getOperationalSettings();
 
-  // 1. アクティブな予約の有無チェック
   const activeRes = await getActiveReservation(uid);
-  if (activeRes) {
-    throw new Error('RESERVATION_LIMIT_EXCEEDED');
-  }
+  if (activeRes) throw new Error('RESERVATION_LIMIT_EXCEEDED');
 
-  // 2. メンテナンス時間チェック
-  if (MAINTENANCE_SLOTS.includes(time)) {
+  if (settings.maintenanceSlots.includes(time)) {
     throw new Error('MAINTENANCE_SLOT');
   }
 
-  // 3. トランザクション処理で重複予約を確実に防止
   const newCheckinCode = generateCheckinCode();
   const reservationsRef = collection(db, 'reservations');
 
@@ -98,10 +121,7 @@ export async function createReservation(
       where('reservation_time', '==', time)
     );
     const existingSnap = await getDocs(q);
-
-    if (!existingSnap.empty) {
-      throw new Error('BOOKING_CONFLICT');
-    }
+    if (!existingSnap.empty) throw new Error('BOOKING_CONFLICT');
 
     const newDocRef = doc(reservationsRef);
     transaction.set(newDocRef, {
@@ -121,4 +141,60 @@ export async function createReservation(
 // 予約のキャンセル
 export async function cancelReservation(reservationId: string): Promise<void> {
   await deleteDoc(doc(db, 'reservations', reservationId));
+}
+
+// --- 2. 管理者向け機能 ---
+
+// 全予約の取得（日時順）
+export async function getAllReservations(): Promise<Reservation[]> {
+  const q = query(
+    collection(db, 'reservations'),
+    orderBy('reservation_date', 'asc'),
+    orderBy('reservation_time', 'asc')
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((docSnap) => ({
+    id: docSnap.id,
+    ...docSnap.data(),
+  })) as Reservation[];
+}
+
+// チェックイン処理 (コード照合)
+export async function checkInWithCode(code: string): Promise<Reservation> {
+  const cleanCode = code.trim().toUpperCase();
+  const q = query(
+    collection(db, 'reservations'),
+    where('checkin_code', '==', cleanCode)
+  );
+  const snapshot = await getDocs(q);
+
+  if (snapshot.empty) throw new Error('NOT_FOUND');
+
+  const docSnap = snapshot.docs[0];
+  const data = docSnap.data();
+
+  if (data.status === 'playing') throw new Error('ALREADY_PLAYING');
+  if (data.status === 'cleared') throw new Error('ALREADY_CLEARED');
+
+  await updateDoc(docSnap.ref, {
+    status: 'playing',
+    checked_in_at: serverTimestamp(),
+  });
+
+  return { id: docSnap.id, ...data, status: 'playing' } as Reservation;
+}
+
+// ゲーム終了・クリアタイム＆難易度の記録
+export async function recordClearResult(
+  reservationId: string,
+  clearTimeSeconds: number,
+  difficultyLevel: number
+): Promise<void> {
+  const docRef = doc(db, 'reservations', reservationId);
+  await updateDoc(docRef, {
+    status: 'cleared',
+    clear_time: clearTimeSeconds,
+    difficulty_level: difficultyLevel,
+    cleared_at: serverTimestamp(),
+  });
 }
