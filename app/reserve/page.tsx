@@ -109,7 +109,7 @@ export default function ReservePage() {
       {/* 共通ナビゲーションヘッダー */}
       <header className="bg-gray-900/80 backdrop-blur-md border-b border-gray-800 sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 font-black text-lg sm:text-xl tracking-wider bg-gradient-to-r from-red-500 via-orange-400 to-yellow-300 bg-clip-text text-transparent">
+          <Link href="/" className="flex items-center gap-2 font-black text-lg sm:text-xl tracking-wider bg-linear-to-r from-red-500 via-orange-400 to-yellow-300 bg-clip-text text-transparent">
             <span>⚡</span>
             <span>レーザー脱出</span>
           </Link>
@@ -261,7 +261,7 @@ export default function ReservePage() {
               <button
                 type="submit"
                 disabled={!selectedTime || !name.trim() || submitting}
-                className="w-full py-3.5 bg-gradient-to-r from-red-600 to-orange-500 hover:from-red-500 hover:to-orange-400 disabled:from-gray-800 disabled:to-gray-800 disabled:text-gray-600 text-white font-bold rounded-xl shadow-lg transition duration-200 text-base"
+                className="w-full py-3.5 bg-linear-to-r from-red-600 to-orange-500 hover:from-red-500 hover:to-orange-400 disabled:from-gray-800 disabled:to-gray-800 disabled:text-gray-600 text-white font-bold rounded-xl shadow-lg transition duration-200 text-base"
               >
                 {submitting ? '処理中...' : '予約を確定する'}
               </button>

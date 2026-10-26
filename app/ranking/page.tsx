@@ -74,7 +74,7 @@ export default function RankingPage() {
       {/* 共通ナビゲーションヘッダー */}
       <header className="bg-gray-900/80 backdrop-blur-md border-b border-gray-800 sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 font-black text-lg sm:text-xl tracking-wider bg-gradient-to-r from-red-500 via-orange-400 to-yellow-300 bg-clip-text text-transparent">
+          <Link href="/" className="flex items-center gap-2 font-black text-lg sm:text-xl trackinglinear from-red-500 via-orange-400 to-yellow-300 bg-clip-text text-transparent">
             <span>⚡</span>
             <span>レーザー脱出</span>
           </Link>
@@ -100,7 +100,7 @@ export default function RankingPage() {
           <div className="inline-block px-3 py-1 bg-red-950/80 border border-red-500/40 text-red-400 rounded-full text-xs font-mono tracking-widest uppercase">
             ⚡ リアルタイムタイムアタック ⚡
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-red-500 via-orange-400 to-yellow-300 bg-clip-text text-transparent">
+          <h1 className="text-3xl sm:text-4xl fontlinear from-red-500 via-orange-400 to-yellow-300 bg-clip-text text-transparent">
             脱出タイムランキング
           </h1>
           <p className="text-xs sm:text-sm text-gray-400">最速で脱出ボタンを押したトップエージェントの記録</p>
@@ -116,7 +116,7 @@ export default function RankingPage() {
                 onClick={() => setSelectedLevel(conf.level)}
                 className={`py-3 px-2 rounded-xl font-bold transition-all text-center flex flex-col items-center justify-center ${
                   isSelected
-                    ? `bg-gradient-to-r ${conf.color} text-white shadow-lg scale-[1.02]`
+                    ? `bg-linear-to-r ${conf.color} text-white shadow-lg scale-[1.02]`
                     : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
                 }`}
               >
@@ -184,7 +184,7 @@ export default function RankingPage() {
         <div className="text-center pt-2">
           <Link
             href="/reserve"
-            className="inline-block px-8 py-3.5 bg-gradient-to-r from-red-600 to-orange-500 hover:from-red-500 hover:to-orange-400 text-white font-bold rounded-xl shadow-lg transition duration-200"
+            className="inline-block px-8 linear from-red-600 to-orange-500 hover:from-red-500 hover:to-orange-400 text-white font-bold rounded-xl shadow-lg transition duration-200"
           >
             🎟️ 挑戦を予約する
           </Link>

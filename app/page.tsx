@@ -24,7 +24,7 @@ export default function HomePage() {
       {/* 共通ナビゲーションヘッダー */}
       <header className="bg-gray-900/80 backdrop-blur-md border-b border-gray-800 sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 font-black text-lg sm:text-xl tracking-wider bg-gradient-to-r from-red-500 via-orange-400 to-yellow-300 bg-clip-text text-transparent">
+          <Link href="/" className="flex items-center gap-2 font-black text-lg sm:text-xl tracking-wider bg-linear-to-r from-red-500 via-orange-400 to-yellow-300 bg-clip-text text-transparent">
             <span>⚡</span>
             <span>レーザー脱出</span>
           </Link>
@@ -47,11 +47,11 @@ export default function HomePage() {
 
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-8 space-y-12">
         {/* 1. ヒーローセクション */}
-        <section className="text-center py-10 sm:py-16 space-y-6 relative overflow-hidden rounded-3xl bg-gradient-to-b from-gray-900 via-gray-900/60 to-transparent border border-gray-800 p-6">
+        <section className="text-center py-10 sm:py-16 space-y-6 relative overflow-hidden rounded-3xl bg-linear-to-b from-gray-900 via-gray-900/60 to-transparent border border-gray-800 p-6">
           <div className="inline-block px-4 py-1.5 rounded-full bg-red-950/80 border border-red-500/40 text-red-400 text-xs sm:text-sm font-semibold tracking-widest uppercase animate-pulse">
             ⚡ 2026 高専祭 アトラクション ⚡
           </div>
-          <h1 className="text-3xl sm:text-6xl font-black tracking-tight bg-gradient-to-r from-red-500 via-orange-400 to-yellow-300 bg-clip-text text-transparent leading-tight">
+          <h1 className="text-3xl sm:text-6xl font-black tracking-tight bg-linear-to-r from-red-500 via-orange-400 to-yellow-300 bg-clip-text text-transparent leading-tight">
             レーザー脱出ゲーム
           </h1>
           <p className="text-gray-300 text-sm sm:text-lg max-w-2xl mx-auto leading-relaxed">
@@ -61,7 +61,7 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row justify-center gap-4 pt-4 max-w-md mx-auto">
             <Link
               href="/reserve"
-              className="flex-1 py-4 px-6 bg-gradient-to-r from-red-600 to-orange-500 hover:from-red-500 hover:to-orange-400 text-white font-bold rounded-xl shadow-lg shadow-red-950/50 transition duration-200 text-center text-base sm:text-lg"
+              className="flex-1 py-4 px-6 bg-linear-to-r from-red-600 to-orange-500 hover:from-red-500 hover:to-orange-400 text-white font-bold rounded-xl shadow-lg shadow-red-950/50 transition duration-200 text-center text-base sm:text-lg"
             >
               🎟️ 今すぐ挑戦を予約する
             </Link>
