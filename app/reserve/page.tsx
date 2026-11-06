@@ -111,7 +111,7 @@ export default function ReservePage() {
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 font-black text-lg sm:text-xl tracking-wider bg-linear-to-r from-red-500 via-orange-400 to-yellow-300 bg-clip-text text-transparent">
             <span>⚡</span>
-            <span>レーザー脱出</span>
+            <span>ボタンラッシュ</span>
           </Link>
           <nav className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm font-semibold">
             <Link href="/" className="px-2.5 py-1.5 rounded-lg text-gray-300 hover:text-white hover:bg-gray-800 transition">
@@ -251,6 +251,9 @@ export default function ReservePage() {
                   onChange={(e) => setName(e.target.value)}
                   className="w-full p-3 bg-gray-950 border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
                 />
+                <p className="pl-3 text-xs text-red-400">
+                個人情報は入力しないでください。<br />この名前はランキングに反映されます。
+                </p>
               </div>
 
               <div className="text-xs text-gray-400 bg-gray-950 p-3 rounded-xl border border-gray-800 flex justify-between items-center">

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { subscribeRankingByDifficulty, formatClearTime } from '@/lib/reservations';
+import { subscribeRankingByDifficulty, formatScore } from '@/lib/reservations';
 import { Reservation } from '@/types';
 
 const DIFFICULTY_CONFIG = [
@@ -21,7 +21,6 @@ export default function RankingPage() {
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    setLoading(true);
     const unsub1 = subscribeRankingByDifficulty(1, 10, (data) => {
       setRankings((prev) => ({ ...prev, 1: data }));
       setLoading(false);
@@ -74,9 +73,9 @@ export default function RankingPage() {
       {/* 共通ナビゲーションヘッダー */}
       <header className="bg-gray-900/80 backdrop-blur-md border-b border-gray-800 sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 font-black text-lg sm:text-xl trackinglinear from-red-500 via-orange-400 to-yellow-300 bg-clip-text text-transparent">
+          <Link href="/" className="flex items-center gap-2 font-black text-lg sm:text-xl tracking-wider bg-linear-to-r from-red-500 via-orange-400 to-yellow-300 bg-clip-text text-transparent">
             <span>⚡</span>
-            <span>レーザー脱出</span>
+            <span>ボタンラッシュ</span>
           </Link>
           <nav className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm font-semibold">
             <Link href="/" className="px-2.5 py-1.5 rounded-lg text-gray-300 hover:text-white hover:bg-gray-800 transition">
@@ -97,13 +96,10 @@ export default function RankingPage() {
 
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-8 space-y-8">
         <div className="text-center space-y-2">
-          <div className="inline-block px-3 py-1 bg-red-950/80 border border-red-500/40 text-red-400 rounded-full text-xs font-mono tracking-widest uppercase">
-            ⚡ リアルタイムタイムアタック ⚡
-          </div>
-          <h1 className="text-3xl sm:text-4xl fontlinear from-red-500 via-orange-400 to-yellow-300 bg-clip-text text-transparent">
-            脱出タイムランキング
+          <h1 className="text-3xl sm:text-4xl font-black bg-linear-to-r from-red-500 via-orange-400 to-yellow-300 bg-clip-text text-transparent">
+            スコアランキング
           </h1>
-          <p className="text-xs sm:text-sm text-gray-400">最速で脱出ボタンを押したトップエージェントの記録</p>
+          <p className="text-xs sm:text-sm text-gray-400">最高スコアを記録したエージェントの順位</p>
         </div>
 
         {/* 難易度切り替えタブ */}
@@ -169,9 +165,9 @@ export default function RankingPage() {
                     </div>
 
                     <div className="text-right shrink-0">
-                      <span className="text-[10px] font-semibold text-gray-400 block">CLEAR TIME</span>
+                      <span className="text-[10px] font-semibold text-gray-400 block">SCORE</span>
                       <span className="font-mono font-extrabold text-base sm:text-xl text-amber-400">
-                        {formatClearTime(item.clear_time)}
+                        {formatScore(item.score)}
                       </span>
                     </div>
                   </div>
@@ -184,9 +180,9 @@ export default function RankingPage() {
         <div className="text-center pt-2">
           <Link
             href="/reserve"
-            className="inline-block px-8 linear from-red-600 to-orange-500 hover:from-red-500 hover:to-orange-400 text-white font-bold rounded-xl shadow-lg transition duration-200"
+            className="inline-block px-8 bg-linear-to-r from-red-600 to-orange-500 hover:from-red-500 hover:to-orange-400 text-white font-bold rounded-xl shadow-lg transition duration-200 py-3"
           >
-            🎟️ 挑戦を予約する
+            挑戦を申し込む
           </Link>
         </div>
       </main>

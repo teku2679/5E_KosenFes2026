@@ -17,6 +17,7 @@ import {
   getOperationalSettings,
   updateOperationalSettings,
   DEFAULT_SETTINGS,
+  formatScore,
 } from '@/lib/reservations';
 import { Reservation, OperationalSettings } from '@/types';
 
@@ -31,16 +32,28 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<'checkin' | 'reservations' | 'settings'>('checkin');
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [settings, setSettings] = useState<OperationalSettings>(DEFAULT_SETTINGS);
-  const [loading, setLoading] = useState(false);
 
   const [checkinCode, setCheckinCode] = useState('');
   const [checkinMessage, setCheckinMessage] = useState('');
 
   const [selectedRes, setSelectedRes] = useState<Reservation | null>(null);
-  const [clearTimeInput, setClearTimeInput] = useState('');
+  const [clearScoreInput, setClearScoreInput] = useState('');
   const [difficulty, setDifficulty] = useState<number>(1);
 
   const [newMaintenanceSlot, setNewMaintenanceSlot] = useState('');
+
+  const loadAdminData = async () => {
+    try {
+      const [resData, settingsData] = await Promise.all([
+        getAllReservations(),
+        getOperationalSettings(),
+      ]);
+      setReservations(resData);
+      setSettings(settingsData);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   // 認証状態の監視（※ 匿名ユーザーは管理者として認めない）
   useEffect(() => {
@@ -55,22 +68,6 @@ export default function AdminPage() {
     });
     return () => unsubscribe();
   }, []);
-
-  const loadAdminData = async () => {
-    try {
-      setLoading(true);
-      const [resData, settingsData] = await Promise.all([
-        getAllReservations(),
-        getOperationalSettings(),
-      ]);
-      setReservations(resData);
-      setSettings(settingsData);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,24 +104,24 @@ export default function AdminPage() {
     e.preventDefault();
     if (!selectedRes || !selectedRes.id) return;
 
-    let seconds = NaN;
-    const parts = clearTimeInput.split(':');
+    let score = NaN;
+    const parts = clearScoreInput.split(':');
     if (parts.length === 2) {
-      seconds = parseInt(parts[0], 10) * 60 + parseFloat(parts[1]);
+      score = parseInt(parts[0], 10) * 60 + parseFloat(parts[1]);
     } else {
-      seconds = parseFloat(clearTimeInput);
+      score = parseFloat(clearScoreInput);
     }
 
-    if (isNaN(seconds) || seconds <= 0) {
-      alert('有効なタイムを入力してください（例: 01:45.50 または 105.5）');
+    if (isNaN(score) || score <= 0) {
+      alert('有効なスコアを入力してください（例: 01:45.50 または 105.5）');
       return;
     }
 
     try {
-      await recordClearResult(selectedRes.id, Math.round(seconds * 100) / 100, difficulty);
-      alert('クリアタイムと難易度を記録しました！');
+      await recordClearResult(selectedRes.id, score, difficulty);
+      alert('スコアと難易度を記録しました！');
       setSelectedRes(null);
-      setClearTimeInput('');
+      setClearScoreInput('');
       await loadAdminData();
     } catch (err) {
       alert('記録に失敗しました。');
@@ -182,7 +179,7 @@ export default function AdminPage() {
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 font-black text-lg sm:text-xl tracking-wider bg-linear-to-r from-red-500 via-orange-400 to-yellow-300 bg-clip-text text-transparent">
             <span>⚡</span>
-            <span>レーザー脱出</span>
+            <span>ボタンラッシュ</span>
           </Link>
           <nav className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm font-semibold">
             <Link href="/" className="px-2.5 py-1.5 rounded-lg text-gray-300 hover:text-white hover:bg-gray-800 transition">
@@ -249,9 +246,9 @@ export default function AdminPage() {
       {/* 共通ナビゲーションヘッダー */}
       <header className="bg-gray-900/80 backdrop-blur-md border-b border-gray-800 sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 font-black text-lg sm:text-xl tracking-wider bg-linear-to-r from-red-500 via-orange-400 to-yellow-300 bg-clip-text text-transparent">
+        <Link href="/" className="flex items-center gap-2 font-black text-lg sm:text-xl tracking-wider bg-linear-to-r from-red-500 via-orange-400 to-yellow-300 bg-clip-text text-transparent">
             <span>⚡</span>
-            <span>レーザー脱出</span>
+            <span>ボタンラッシュ</span>
           </Link>
           <nav className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm font-semibold">
             <Link href="/" className="px-2.5 py-1.5 rounded-lg text-gray-300 hover:text-white hover:bg-gray-800 transition">
@@ -273,7 +270,7 @@ export default function AdminPage() {
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-8 space-y-6">
         <div className="flex justify-between items-center border-b border-gray-800 pb-4">
           <h1 className="text-lg sm:text-2xl font-bold text-white flex items-center gap-2">
-            <span>🛠️</span> <span>脱出ゲーム 管理システム</span>
+            <span>🛠️</span> <span>ボタンラッシュ 管理システム</span>
           </h1>
           <button onClick={handleLogout} className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold rounded-lg border border-gray-700">
             ログアウト
@@ -376,7 +373,7 @@ export default function AdminPage() {
                       <td className="p-3 text-xs">
                         {r.status === 'cleared' ? (
                           <span>
-                            <b className="text-amber-400">Lv.{r.difficulty_level ?? 1}</b> ({r.clear_time}秒)
+                            <b className="text-amber-400">Lv.{r.difficulty_level ?? 1}</b> ({formatScore(r.score)})
                           </span>
                         ) : '-'}
                       </td>
@@ -385,12 +382,12 @@ export default function AdminPage() {
                           <button
                             onClick={() => {
                               setSelectedRes(r);
-                              setClearTimeInput('');
+                              setClearScoreInput('');
                               setDifficulty(1);
                             }}
                             className="px-2 py-1 bg-green-600 hover:bg-green-500 text-white text-[10px] font-bold rounded"
                           >
-                            タイム登録
+                            スコア登録
                           </button>
                         )}
                         <button
@@ -483,7 +480,7 @@ export default function AdminPage() {
         {selectedRes && (
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
             <div className="bg-gray-900 border border-gray-800 p-6 rounded-2xl max-w-md w-full shadow-2xl space-y-4">
-              <h3 className="text-base font-bold text-white">クリアタイム＆難易度記録</h3>
+              <h3 className="text-base font-bold text-white">スコア＆難易度記録</h3>
               <p className="text-xs text-gray-400">
                 挑戦者: <b className="text-white">{selectedRes.name}</b> ({selectedRes.reservation_time})
               </p>
@@ -502,13 +499,13 @@ export default function AdminPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-xs font-bold text-gray-300">クリアタイム (mm:ss.ss または 秒数)</label>
+                  <label className="block text-xs font-bold text-gray-300">スコア (pt)</label>
                   <input
                     type="text"
                     required
-                    placeholder="例: 01:45.50"
-                    value={clearTimeInput}
-                    onChange={(e) => setClearTimeInput(e.target.value)}
+                    placeholder="例: 20"
+                    value={clearScoreInput}
+                    onChange={(e) => setClearScoreInput(e.target.value)}
                     className="w-full p-2.5 bg-gray-950 border border-gray-800 rounded-xl text-white font-mono text-sm"
                   />
                 </div>

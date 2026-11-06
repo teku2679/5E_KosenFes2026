@@ -188,13 +188,13 @@ export async function checkInWithCode(code: string): Promise<Reservation> {
 // ゲーム終了・クリアタイム＆難易度の記録
 export async function recordClearResult(
   reservationId: string,
-  clearTimeSeconds: number,
+  score: number,
   difficultyLevel: number
 ): Promise<void> {
   const docRef = doc(db, 'reservations', reservationId);
   await updateDoc(docRef, {
     status: 'cleared',
-    clear_time: clearTimeSeconds,
+    score: score,
     difficulty_level: difficultyLevel,
     cleared_at: serverTimestamp(),
   });
@@ -202,17 +202,13 @@ export async function recordClearResult(
 
 // --- 3. ランキング用リアルタイム取得・フォーマット機能 ---
 
-// 秒数を mm:ss.SS 形式にフォーマット
-export function formatClearTime(seconds?: number): string {
-  if (seconds === undefined || seconds === null || isNaN(seconds)) return '--:--.--';
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  const ms = Math.floor((seconds % 1) * 100);
-  const mStr = String(m).padStart(2, '0');
-  const sStr = String(s).padStart(2, '0');
-  const msStr = String(ms).padStart(2, '0');
-  return `${mStr}:${sStr}.${msStr}`;
+// スコアをポイント表記にフォーマット
+export function formatScore(score?: number): string {
+  if (score === undefined || !Number.isFinite(score)) return '-- pt';
+  return `${score} pt`;
 }
+
+export const formatClearTime = formatScore;
 
 // 難易度別のリアルタイムランキング購読 (オーバーロード対応)
 export function subscribeRankingByDifficulty(
@@ -244,8 +240,8 @@ export function subscribeRankingByDifficulty(
         ...docSnap.data(),
       })) as Reservation[];
 
-      // クリアタイム昇順（速い順）でソート
-      list.sort((a, b) => (a.clear_time ?? Infinity) - (b.clear_time ?? Infinity));
+      // スコア昇順（低い順）でソート
+      list.sort((a, b) => (a.score ?? Infinity) - (b.score ?? Infinity));
 
       callback(list.slice(0, limitCount));
     },

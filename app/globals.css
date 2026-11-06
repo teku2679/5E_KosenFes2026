@@ -8,3 +8,36 @@
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   }
 }
+
+@keyframes gradient-shift {
+  from {
+    background-position: 0% center;
+  }
+  to {
+    background-position: 100% center;
+  }
+}
+
+@keyframes gradient-glow {
+  from {
+    filter: drop-shadow(0 0 8px rgb(239 68 68 / 70%));
+  }
+  to {
+    filter: drop-shadow(0 0 24px rgb(251 146 60 / 90%));
+  }
+}
+
+.animate-gradient {
+  background-size: 300% 100%;
+  animation:
+    gradient-shift 1.8s ease-in-out infinite alternate,
+    gradient-glow 1.8s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-gradient {
+    animation: none;
+    background-position: 50% center;
+    filter: drop-shadow(0 0 12px rgb(239 68 68 / 70%));
+  }
+}
