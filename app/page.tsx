@@ -181,7 +181,7 @@ export default function HomePage() {
               <h3 className="text-xl font-bold mb-2 text-white">LEVEL 1：初級</h3>
               <p className="text-gray-400 text-sm leading-relaxed">
                 ボタンを押せる時間が長く、ゆったりと遊べます。<br />
-                脱出ゲームが初めての方や小さなお子様におすすめ！
+                ゲームが得意でない方や小さなお子様におすすめ！
               </p>
             </div>
             <div className="bg-gray-900/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 shadow-md hover:border-yellow-500/60 transition transform hover:translate-y-1">
